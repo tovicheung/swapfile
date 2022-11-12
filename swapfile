@@ -1,0 +1,106 @@
+#!/bin/bash
+
+args=()
+force=0
+verbose=0
+errignore=0
+tmpname=".tmp.swapfile.XXXXXXXXXX"
+
+help() {
+	local code=1
+	if [ "$1" = "-0" ]; then
+		code=0
+		shift
+	fi
+	if [ "$#" != 0 ]; then
+		printf "\033[7m%b\033[0m\n" "$@" 1>&2
+	fi
+	printf "%b\033[0m\n" "\033[1;36mswapfile"\
+	"Usage: $(basename -- "$0") file1 file2"\
+	"Options:    -f, --force        Use -f for mv"\
+	"            -t, --temp NAME    Use NAME as temp filename"\
+	"            -h, --help         Show help"\
+	"            -v, --verbose      Verbose output"\
+	"            --ignore-error     Continue despite errors from mv" 1>&2
+	exit "$code"
+}
+
+info() {
+	if [ "$1" == "-v" ]; then
+		if [ "$verbose" != 1 ]; then
+			return
+		fi
+		shift
+	fi
+	printf "%b\033[0m\n" "$@"
+}
+
+mvw() {
+	# wrapper for mv that adds -f when --force is used
+	local cmd=("mv")
+	if [ "$force" = 1 ]; then
+		cmd+=("-f")
+	fi
+	cmd+=("--") # endopts
+	cmd+=("$@")
+	info -v "Executing ${cmd[*]}"
+	"${cmd[@]}"
+	local mvcode="$?"
+	if [ "$mvcode" != 0 ]; then
+		info "\033[31mmv returned code $mvcode, see above for details, use --ignore-error to continue despite errors" "Info: tmpfile is $tmpfile, lost file contents might be there"
+		if [ "$errignore" = 0 ]; then
+			exit "$mvcode"
+		fi
+		info "The above error is suppressed by --ignore-error"
+	fi
+}
+
+while [ "$#" != 0 ]; do
+	case "$1" in
+		-h | --help)
+			help -0
+			;;
+		-f | --force)
+			force=1
+			;;
+		-t | --temp)
+			if [ "$#" = 1 ]; then
+				help "-t, --temp requires an argument"
+			fi
+			shift
+			if [ -z "$1" ]; then
+				help "Please do not pass empty arguments"
+			fi
+			tmpname="$1"
+			if ! mktemp "$tmpname" 1>/dev/null; then
+				info "Invalid temp name (mktemp returned error), see above for details"
+				exit 1
+			fi
+			;;
+		-v | --verbose)
+			verbose=1
+			;;
+		--ignore-error)
+			errignore=1
+			;;
+		*) # assumes it's filename
+			args+=("$1")
+			;;
+	esac
+	shift
+done
+
+if [ "${#args[@]}" -ne 2 ]; then
+	help "Two filenames are required"
+fi
+
+file1="${args[0]}"
+file2="${args[1]}"
+
+dir=$(dirname -- "$file1")
+tmpfile="${dir}/$(mktemp "$tmpname")"
+info -v "Info: Temp file is \"$tmpfile\""
+
+mvw "$file1" "$tmpfile"
+mvw "$file2" "$file1"
+mvw "$tmpfile" "$file2"
