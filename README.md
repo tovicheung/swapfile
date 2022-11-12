@@ -6,13 +6,14 @@ Installing swapfile is a piece of cake:
 ```bash
 git clone https://github.com/tovicheung/swapfile # clone this repository
 cd swapfile # cd to cloned directory
+chmod +x swapfile
 mv swapfile /usr/local/bin # move to path
 cd ..
 rm -rf swapfile
 ```
 or for people who prefer one-liners:
 ```bash
-git clone https://github.com/tovicheung/swapfile && cd swapfile && mv swapfile /usr/local/bin && cd .. && rm -rf swapfile
+git clone https://github.com/tovicheung/swapfile && cd swapfile && chmod +x swapfile && mv swapfile /usr/local/bin && cd .. && rm -rf swapfile
 ```
 
 ## Documentation
